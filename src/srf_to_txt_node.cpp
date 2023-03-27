@@ -3,7 +3,7 @@
  * */
 #include <ros/ros.h>
 #include <nav_msgs/Odometry.h>
-#include <mrpt_bridge/pose.h>
+#include <mrpt/ros1bridge/pose.h>
 #include <mrpt/poses/CPose3D.h>
 
 #include <boost/foreach.hpp>
@@ -16,6 +16,7 @@
 #include <vector>
 #include <iomanip>
 #include <string>
+#include <fstream>
 
 using namespace std;
 
@@ -32,7 +33,8 @@ bool first_estimation = true;
 //Callback every time a new GT pose is available
 void GTOdomCallBack(const nav_msgs::Odometry::ConstPtr& new_odom)
 {
-    mrpt_bridge::convert(new_odom->pose.pose, GTpose);
+    // mrpt_msgs_bridge::convert(new_odom->pose.pose, GTpose);
+    GTpose = mrpt::poses::CPose3D(mrpt::ros1bridge::fromROS(new_odom->pose.pose));
     hasGT = true;
 }
 
@@ -40,35 +42,40 @@ void GTOdomCallBack(const nav_msgs::Odometry::ConstPtr& new_odom)
 //Callback every time a SRF_CS estimation is published!
 void srfOdomCallBack_cs(const nav_msgs::Odometry::ConstPtr& new_odom)
 {
-    mrpt_bridge::convert(new_odom->pose.pose, SRF_CSpose);
+    // mrpt_bridge::convert(new_odom->pose.pose, SRF_CSpose);
+    SRF_CSpose = mrpt::poses::CPose3D(mrpt::ros1bridge::fromROS(new_odom->pose.pose));
     hasSRF_CS = true;
 }
 
 //Callback every time a SRF_KS estimation is published!
 void srfOdomCallBack_ks(const nav_msgs::Odometry::ConstPtr& new_odom)
 {
-    mrpt_bridge::convert(new_odom->pose.pose, SRF_KSpose);
+    // mrpt_msgs_bridge::convert(new_odom->pose.pose, SRF_KSpose);
+    SRF_KSpose = mrpt::poses::CPose3D(mrpt::ros1bridge::fromROS(new_odom->pose.pose));
     hasSRF_KS = true;
 }
 
 //Callback every time a SRF_HYBRID estimation is published!
 void srfOdomCallBack_hybrid(const nav_msgs::Odometry::ConstPtr& new_odom)
 {
-    mrpt_bridge::convert(new_odom->pose.pose, SRF_HYBRIDpose);
+    // mrpt_msgs_bridge::convert(new_odom->pose.pose, SRF_HYBRIDpose);
+    SRF_HYBRIDpose = mrpt::poses::CPose3D(mrpt::ros1bridge::fromROS(new_odom->pose.pose));
     hasSRF_HYBRID = true;
 }
 
 //Callback every time a CSM estimation is published!
 void csmOdomCallBack(const nav_msgs::Odometry::ConstPtr& new_odom)
 {
-    mrpt_bridge::convert(new_odom->pose.pose, CSMpose);
+    // mrpt_msgs_bridge::convert(new_odom->pose.pose, CSMpose);
+    CSMpose = mrpt::poses::CPose3D(mrpt::ros1bridge::fromROS(new_odom->pose.pose));
     hasCSM = true;
 }
 
 //Callback every time a SRF_CS estimation is published!
 void psmOdomCallBack(const nav_msgs::Odometry::ConstPtr& new_odom)
 {
-    mrpt_bridge::convert(new_odom->pose.pose, PSMpose);
+    // mrpt_msgs_bridge::convert(new_odom->pose.pose, PSMpose);
+    PSMpose = mrpt::poses::CPose3D(mrpt::ros1bridge::fromROS(new_odom->pose.pose));
     hasPSM = true;
 }
 

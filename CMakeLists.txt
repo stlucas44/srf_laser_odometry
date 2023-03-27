@@ -19,7 +19,7 @@ find_package(catkin REQUIRED COMPONENTS
   sensor_msgs
   std_msgs
   tf
-  mrpt_bridge
+  mrpt_msgs_bridge
 )
 
 ## System dependencies are found with CMake's conventions
@@ -27,22 +27,10 @@ find_package(Boost REQUIRED COMPONENTS system)
 find_package(cmake_modules REQUIRED)
 find_package(Eigen3 REQUIRED)
 
-find_package(MRPT REQUIRED)
-MESSAGE(STATUS "Found MRPT: " ${MRPT_VERSION})
-IF(MRPT_VERSION VERSION_LESS 1.9.9)
-	# MRPT<2.0
-	find_package(MRPT REQUIRED base obs maps slam)
-ELSE()
-	# MRPT>=2.0
-        find_package(MRPT REQUIRED poses obs maps slam math)
-ENDIF()
-
-#include_directories(${MRPT_INCLUDE_DIRS})
-#MESSAGE( STATUS "MRPT_INCLUDE_DIRS: " ${MRPT_INCLUDE_DIRS})
-#link_directories(${MRPT_LIBRARY_DIRS})
-#MESSAGE( STATUS "MRPT_LIBRARY_DIRS: " ${MRPT_LIBS})
-
-
+# Find all MRPT libraries:
+find_package(MRPT 2.0 COMPONENTS poses gui slam ros1bridge OPTIONAL_COMPONENTS vision)
+message(STATUS "MRPT_VERSION: ${MRPT_VERSION}")
+message(STATUS "MRPT_LIBRARIES: ${MRPT_LIBRARIES}")
 
 ###################################
 ## catkin specific configuration ##
@@ -56,7 +44,7 @@ ENDIF()
 catkin_package(
  ##INCLUDE_DIRS include
  LIBRARIES laser_odometry
- CATKIN_DEPENDS nav_msgs roscpp sensor_msgs std_msgs tf mrpt_bridge
+ CATKIN_DEPENDS nav_msgs roscpp sensor_msgs std_msgs tf mrpt_msgs_bridge
  DEPENDS system_lib
 )
 
@@ -87,12 +75,12 @@ target_link_libraries(srf_laser_odometry_node
    ${catkin_LIBRARIES}
    ${Boost_LIBRARIES}
    ${EIGEN3_LIBRARIES}
-   ${MRPT_LIBS}
+   ${MRPT_LIBRARIES}
 )
 
 target_link_libraries(srf_to_txt_node
    ${catkin_LIBRARIES}
    ${Boost_LIBRARIES}
    ${EIGEN3_LIBRARIES}
-   ${MRPT_LIBS}
+   ${MRPT_LIBRARIES}
 )

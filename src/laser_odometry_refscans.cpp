@@ -27,9 +27,11 @@
 
 using namespace Eigen;
 using namespace std;
-using mrpt::math::square;
-using mrpt::utils::sign;
+// using mrpt::math::square;
+// using mrpt::utils::sign;
 
+int square(float x) { return x*x; }
+int sign(float x) { return x<0 ? -1:1; }
 
 void SRF_RefS::initialize(unsigned int size, float FOV_rad, unsigned int odo_method)
 {
@@ -93,7 +95,7 @@ void SRF_RefS::initialize(unsigned int size, float FOV_rad, unsigned int odo_met
     weights_12.resize(cols); weights_13.resize(cols);
     null_12.resize(cols); null_13.resize(cols);
     null_12.fill(false); null_13.fill(false);
-	cov_odo.assign(0.f);
+	cov_odo.setZero();
     outliers.resize(cols);
     outliers.fill(false);
 
@@ -102,8 +104,8 @@ void SRF_RefS::initialize(unsigned int size, float FOV_rad, unsigned int odo_met
 	g_mask[0] = 1.f/16.f; g_mask[1] = 0.25f; g_mask[2] = 6.f/16.f; g_mask[3] = g_mask[1]; g_mask[4] = g_mask[0];
 
     //Initialize "last velocity" as zero
-	kai_abs.assign(0.f);
-	kai_loc_old.assign(0.f);
+	kai_abs.setZero();
+	kai_loc_old.setZero();
     overall_trans_prev.setIdentity();
 }
 
@@ -323,7 +325,9 @@ void SRF_RefS::calculateCoord()
             xx_12[image_level](u) = 0.5f*(xx_2[image_level](u) + xx_warped[image_level](u));
             yy_12[image_level](u) = 0.5f*(yy_2[image_level](u) + yy_warped[image_level](u));
             if ((u>0)&&(u<cols_i-1))
+            {
                 num_valid_range++;
+            }
 		}
 
         //Coordinates 13
@@ -340,7 +344,9 @@ void SRF_RefS::calculateCoord()
             xx_13[image_level](u) = 0.5f*(xx_3_warpedTo2[image_level](u) + xx_warped[image_level](u));
             yy_13[image_level](u) = 0.5f*(yy_3_warpedTo2[image_level](u) + yy_warped[image_level](u));
             if ((u>0)&&(u<cols_i-1))
+            {
                 num_valid_range++;
+            }
         }
 	}
 }
@@ -353,11 +359,11 @@ void SRF_RefS::calculateRangeDerivatives()
 
 	for (unsigned int u = 0; u < cols_i-1; u++)
     {
-        const float dist_12 = square(xx_12[image_level](u+1) - xx_12[image_level](u))
-                            + square(yy_12[image_level](u+1) - yy_12[image_level](u));
+        const float dist_12 = pow(xx_12[image_level](u+1) - xx_12[image_level](u), 2)
+                            + pow(yy_12[image_level](u+1) - yy_12[image_level](u), 2);
 
-        const float dist_13 = square(xx_13[image_level](u+1) - xx_13[image_level](u))
-                            + square(yy_13[image_level](u+1) - yy_13[image_level](u));
+        const float dist_13 = pow(xx_13[image_level](u+1) - xx_13[image_level](u), 2)
+                            + pow(yy_13[image_level](u+1) - yy_13[image_level](u), 2);
 
         if (dist_12  > 0.f)
             rtita_12(u) = sqrtf(dist_12);
@@ -411,7 +417,7 @@ void SRF_RefS::computeWeights()
             //const float final_dtita = range_warped[image_level](u+1) - range_warped[image_level](u-1);
             //const float dtitat = ini_dtita - final_dtita;
             const float dtita2 = dtita_12(u+1) - dtita_12(u-1);
-            const float w_der = kd*(square(dt_12(u)) + square(dtita_12(u))) + k2d*square(dtita2) + sensor_sigma;
+            const float w_der = kd*(pow(dt_12(u), 2) + pow(dtita_12(u), 2)) + k2d*pow(dtita2, 2) + sensor_sigma;
 
             weights_12(u) = sqrtf(1.f/w_der);
 		}
@@ -424,7 +430,7 @@ void SRF_RefS::computeWeights()
             //const float final_dtita = range_warped[image_level](u+1) - range_warped[image_level](u-1);
             //const float dtitat = ini_dtita - final_dtita;
             const float dtita2 = dtita_13(u+1) - dtita_13(u-1);
-            const float w_der = kd*(square(dt_13(u)) + square(dtita_13(u))) + k2d*square(dtita2) + sensor_sigma;
+            const float w_der = kd*(pow(dt_13(u), 2) + pow(dtita_13(u), 2)) + k2d*pow(dtita2, 2) + sensor_sigma;
 
             weights_13(u) = sqrtf(1.f/w_der);
         }
@@ -440,7 +446,7 @@ void SRF_RefS::computeWeights()
 void SRF_RefS::solveSystemQuadResiduals3Scans()
 {
     A.resize(num_valid_range,3);
-    B.resize(num_valid_range);
+    B.resize(num_valid_range,1);
     unsigned int cont = 0;
     const float kdtita = (cols_i)/fovh;
 
@@ -482,8 +488,8 @@ void SRF_RefS::solveSystemQuadResiduals3Scans()
 
     //Solve the linear system of equations using a minimum least squares method
     MatrixXf AtA, AtB;
-    AtA.multiply_AtA(A);
-    AtB.multiply_AtB(A,B);
+    AtA = A.transpose() * A;// AtA.multiply_AtA(A);
+    AtB = A.transpose() * B;// AtB.multiply_AtB(A,B);
     kai_loc_level = AtA.ldlt().solve(AtB);
 
     //Covariance matrix calculation
@@ -494,7 +500,7 @@ void SRF_RefS::solveSystemQuadResiduals3Scans()
 void SRF_RefS::solveSystemSmoothTruncQuad3Scans()
 {
     A.resize(num_valid_range,3); Aw.resize(num_valid_range,3);
-    B.resize(num_valid_range); Bw.resize(num_valid_range);
+    B.resize(num_valid_range,1); Bw.resize(num_valid_range,1);
     unsigned int cont = 0;
     const float kdtita = float(cols_i)/fovh;
     const float inv_kdtita = 1.f/kdtita;
@@ -540,8 +546,8 @@ void SRF_RefS::solveSystemSmoothTruncQuad3Scans()
 
     //Solve the linear system of equations using a minimum least squares method
     MatrixXf AtA, AtB;
-    AtA.multiply_AtA(A);
-    AtB.multiply_AtB(A,B);
+    AtA = A.transpose() * A;// AtA.multiply_AtA(A);
+    AtB = A.transpose() * B;// AtB.multiply_AtB(A,B);
     kai_loc_level = AtA.ldlt().solve(AtB);
     VectorXf res = A*kai_loc_level - B;
 
@@ -562,13 +568,13 @@ void SRF_RefS::solveSystemSmoothTruncQuad3Scans()
     //Find the m-estimator constant
     const float c = 4.f*mad;
     const float inv_c = 1.f/c;
-    const float squared_c = square(c);
+    const float squared_c = pow(c, 2);
 
     //Compute the energy
     float new_energy = 0.f, last_energy;
     for (unsigned int i=0; i<res.rows(); i++)
     {
-        if (abs(res(i)) < c)     new_energy += 0.5f*square(res(i))*(1.f - 0.5f*square(res(i)*inv_c));
+        if (abs(res(i)) < c)     new_energy += 0.5f*pow(res(i), 2)*(1.f - 0.5f*pow(res(i)*inv_c, 2));
         else                     new_energy += 0.25f*squared_c;
     }
     //printf("\n\nEnergy(0) = %f", new_energy);
@@ -587,7 +593,7 @@ void SRF_RefS::solveSystemSmoothTruncQuad3Scans()
             if (null_12(u) == false)
             {
                 float res_weight;
-                if (abs(res(cont)) <= c)    res_weight = 1.f - square(res(cont)*inv_c);
+                if (abs(res(cont)) <= c)    res_weight = 1.f - pow(res(cont)*inv_c, 2);
                 else                        res_weight = 0.f;
 
                 //Fill the matrix Aw
@@ -601,7 +607,7 @@ void SRF_RefS::solveSystemSmoothTruncQuad3Scans()
             if (null_13(u) == false)
             {
                 float res_weight;
-                if (abs(res(cont)) <= c)    res_weight = 1.f - square(res(cont)*inv_c);
+                if (abs(res(cont)) <= c)    res_weight = 1.f - pow(res(cont)*inv_c, 2);
                 else                        res_weight = 0.f;
 
                 //Fill the matrix Aw
@@ -614,8 +620,8 @@ void SRF_RefS::solveSystemSmoothTruncQuad3Scans()
         }
 
         //Solve the linear system of equations using a minimum least squares method
-        AtA.multiply_AtA(Aw);
-        AtB.multiply_AtB(Aw,Bw);
+        AtA = Aw.transpose() * Aw;// AtA.multiply_AtA(Aw);
+        AtB = Aw.transpose() * Bw;// AtB.multiply_AtB(Aw,Bw);
         kai_loc_level = AtA.ldlt().solve(AtB);
         res = A*kai_loc_level - B;
 
@@ -623,7 +629,7 @@ void SRF_RefS::solveSystemSmoothTruncQuad3Scans()
         new_energy = 0.f;
         for (unsigned int i=0; i<res.rows(); i++)
         {
-            if (abs(res(i)) < c)    new_energy += 0.5f*square(res(i))*(1.f - 0.5f*square(res(i)*inv_c));
+            if (abs(res(i)) < c)    new_energy += 0.5f*pow(res(i), 2)*(1.f - 0.5f*pow(res(i)*inv_c, 2));
             else                    new_energy += 0.25f*squared_c;
         }
         //printf("\nEnergy(%d) = %f", iter, new_energy);
@@ -695,8 +701,8 @@ void SRF_RefS::solveSystemSmoothTruncQuadOnly13()
 
     //Solve the linear system of equations using a minimum least squares method
     MatrixXf AtA, AtB;
-    AtA.multiply_AtA(A);
-    AtB.multiply_AtB(A,B);
+    AtA = A.transpose() * A;// AtA.multiply_AtA(A);
+    AtB = A.transpose() * B;// AtB.multiply_AtB(A,B);
     kai_loc_level = AtA.ldlt().solve(AtB);
     VectorXf res = A*kai_loc_level - B;
     //cout << endl << "max res: " << res.maxCoeff();
@@ -719,13 +725,13 @@ void SRF_RefS::solveSystemSmoothTruncQuadOnly13()
     //Find the m-estimator constant
     const float c = 4.f*mad;
     const float inv_c = 1.f/c;
-    const float squared_c = square(c);
+    const float squared_c = pow(c, 2);
 
     //Compute the energy
     float new_energy = 0.f, last_energy;
     for (unsigned int i=0; i<res.rows(); i++)
     {
-        if (abs(res(i)) < c)     new_energy += 0.5f*square(res(i))*(1.f - 0.5f*square(res(i)*inv_c));
+        if (abs(res(i)) < c)     new_energy += 0.5f*pow(res(i), 2)*(1.f - 0.5f*pow(res(i)*inv_c, 2));
         else                     new_energy += 0.25f*squared_c;
     }
     //printf("\n\nEnergy(0) = %f", new_energy);
@@ -744,7 +750,7 @@ void SRF_RefS::solveSystemSmoothTruncQuadOnly13()
             if (null_13(u) == false)
             {
                 float res_weight;
-                if (abs(res(cont)) <= c)    res_weight = 1.f - square(res(cont)*inv_c);
+                if (abs(res(cont)) <= c)    res_weight = 1.f - pow(res(cont)*inv_c, 2);
                 else                        res_weight = 0.f;
 
                 //Fill the matrix Aw
@@ -757,8 +763,8 @@ void SRF_RefS::solveSystemSmoothTruncQuadOnly13()
         }
 
         //Solve the linear system of equations using a minimum least squares method
-        AtA.multiply_AtA(Aw);
-        AtB.multiply_AtB(Aw,Bw);
+        AtA = Aw.transpose() * Aw;// AtA.multiply_AtA(Aw);
+        AtB = Aw.transpose() * Bw;// AtB.multiply_AtB(Aw,Bw);
         kai_loc_level = AtA.ldlt().solve(AtB);
         res = A*kai_loc_level - B;
 
@@ -766,7 +772,7 @@ void SRF_RefS::solveSystemSmoothTruncQuadOnly13()
         new_energy = 0.f;
         for (unsigned int i=0; i<res.rows(); i++)
         {
-            if (abs(res(i)) < c)    new_energy += 0.5f*square(res(i))*(1.f - 0.5f*square(res(i)*inv_c));
+            if (abs(res(i)) < c)    new_energy += 0.5f*pow(res(i), 2)*(1.f - 0.5f*pow(res(i)*inv_c, 2));
             else                    new_energy += 0.25f*squared_c;
         }
         //printf("\nEnergy(%d) = %f", iter, new_energy);
@@ -788,7 +794,7 @@ void SRF_RefS::solveSystemSmoothTruncQuadOnly12()
     }
 
     A.resize(valid_here,3); Aw.resize(valid_here,3);
-    B.resize(valid_here); Bw.resize(valid_here);
+    B.resize(valid_here,1); Bw.resize(valid_here,1);
     unsigned int cont = 0;
     const float kdtita = float(cols_i)/fovh;
     const float inv_kdtita = 1.f/kdtita;
@@ -819,8 +825,8 @@ void SRF_RefS::solveSystemSmoothTruncQuadOnly12()
 
     //Solve the linear system of equations using a minimum least squares method
     MatrixXf AtA, AtB;
-    AtA.multiply_AtA(A);
-    AtB.multiply_AtB(A,B);
+    AtA = A.transpose() * A;// AtA.multiply_AtA(A);
+    AtB = A.transpose() * B;// AtB.multiply_AtB(A,B);
     kai_loc_level = AtA.ldlt().solve(AtB);
     VectorXf res = A*kai_loc_level - B;
     //cout << endl << "max res: " << res.maxCoeff();
@@ -843,13 +849,13 @@ void SRF_RefS::solveSystemSmoothTruncQuadOnly12()
     //Find the m-estimator constant
     const float c = 4.f*mad;
     const float inv_c = 1.f/c;
-    const float squared_c = square(c);
+    const float squared_c = pow(c, 2);
 
     //Compute the energy
     float new_energy = 0.f, last_energy;
     for (unsigned int i=0; i<res.rows(); i++)
     {
-        if (abs(res(i)) < c)     new_energy += 0.5f*square(res(i))*(1.f - 0.5f*square(res(i)*inv_c));
+        if (abs(res(i)) < c)     new_energy += 0.5f*pow(res(i), 2)*(1.f - 0.5f*pow(res(i)*inv_c, 2));
         else                     new_energy += 0.25f*squared_c;
     }
     //printf("\n\nEnergy(0) = %f", new_energy);
@@ -868,7 +874,7 @@ void SRF_RefS::solveSystemSmoothTruncQuadOnly12()
             if (null_12(u) == false)
             {
                 float res_weight;
-                if (abs(res(cont)) <= c)    res_weight = 1.f - square(res(cont)*inv_c);
+                if (abs(res(cont)) <= c)    res_weight = 1.f - pow(res(cont)*inv_c, 2);
                 else                        res_weight = 0.f;
 
                 //Fill the matrix Aw
@@ -881,8 +887,8 @@ void SRF_RefS::solveSystemSmoothTruncQuadOnly12()
         }
 
         //Solve the linear system of equations using a minimum least squares method
-        AtA.multiply_AtA(Aw);
-        AtB.multiply_AtB(Aw,Bw);
+        AtA = Aw.transpose() * Aw;// AtA.multiply_AtA(Aw);
+        AtB = Aw.transpose() * Bw;// AtB.multiply_AtB(Aw,Bw);
         kai_loc_level = AtA.ldlt().solve(AtB);
         res = A*kai_loc_level - B;
 
@@ -890,7 +896,7 @@ void SRF_RefS::solveSystemSmoothTruncQuadOnly12()
         new_energy = 0.f;
         for (unsigned int i=0; i<res.rows(); i++)
         {
-            if (abs(res(i)) < c)    new_energy += 0.5f*square(res(i))*(1.f - 0.5f*square(res(i)*inv_c));
+            if (abs(res(i)) < c)    new_energy += 0.5f*pow(res(i), 2)*(1.f - 0.5f*pow(res(i)*inv_c, 2));
             else                    new_energy += 0.25f*squared_c;
         }
         //printf("\nEnergy(%d) = %f", iter, new_energy);
@@ -945,11 +951,11 @@ void SRF_RefS::performWarping()
                 }
                 else
                 {
-                    const float w_r = square(delta_l);
+                    const float w_r = pow(delta_l, 2);
                     range_warped[image_level](uwarp_r) += w_r*range_w;
                     wacu(uwarp_r) += w_r;
 
-                    const float w_l = square(delta_r);
+                    const float w_l = pow(delta_r, 2);
                     range_warped[image_level](uwarp_l) += w_l*range_w;
                     wacu(uwarp_l) += w_l;
                 }
@@ -996,7 +1002,7 @@ void SRF_RefS::performBestWarping()
             //Transform point to the warped reference frame
             x_trans(u) = acu_trans(0,0)*xx_1[image_level](u) + acu_trans(0,1)*yy_1[image_level](u) + acu_trans(0,2);
             y_trans(u) = acu_trans(1,0)*xx_1[image_level](u) + acu_trans(1,1)*yy_1[image_level](u) + acu_trans(1,2);
-            range_trans(u) = sqrtf(square(x_trans(u)) + square(y_trans(u)));
+            range_trans(u) = sqrtf(pow(x_trans(u), 2) + pow(y_trans(u), 2));
             const float tita_trans = atan2(y_trans(u), x_trans(u));
             u_trans(u) = kdtita*(tita_trans + 0.5f*fovh) - 0.5f;
         }
@@ -1062,7 +1068,7 @@ void SRF_RefS::warpScan3To2()
                 //Transform point to the warped reference frame
                 x_trans(u) = acu_trans_inv(0,0)*xx_3[image_level](u) + acu_trans_inv(0,1)*yy_3[image_level](u) + acu_trans_inv(0,2);
                 y_trans(u) = acu_trans_inv(1,0)*xx_3[image_level](u) + acu_trans_inv(1,1)*yy_3[image_level](u) + acu_trans_inv(1,2);
-                range_trans(u) = sqrtf(square(x_trans(u)) + square(y_trans(u)));
+                range_trans(u) = sqrtf(pow(x_trans(u), 2) + pow(y_trans(u), 2));
                 const float tita_trans = atan2(y_trans(u), x_trans(u));
                 u_trans(u) = kdtita*(tita_trans + 0.5f*fovh) - 0.5f;
             }
@@ -1328,16 +1334,16 @@ void SRF_RefS::updateReferenceScan()
     //Threshold very big scanner (270, 1080, 30 m): r = -10.66*t⁴ + 11.81*t³ - 4.371*t² + 0.5319*t + 0.2042
     //const float threshold = 0.5f;
 
-    const float trans = sqrtf(square(overall_trans_prev(0,2)) + square(overall_trans_prev(1,2)));
+    const float trans = sqrtf(pow(overall_trans_prev(0,2), 2) + pow(overall_trans_prev(1,2), 2));
     const float rot = abs(acos(overall_trans_prev(0,0)));
     //printf("\n Trans = %f, rot = %f", trans, rot);
 
     float keyscan_out_region;
-    const float trans_2 = square(trans);
+    const float trans_2 = pow(trans, 2);
     if (cols < 500)
-        keyscan_out_region = -14.92*square(trans_2) - 7.617*trans_2*trans + 2.307*trans_2 - 0.3149*trans + 0.1054 - rot;
+        keyscan_out_region = -14.92*pow(trans_2, 2) - 7.617*trans_2*trans + 2.307*trans_2 - 0.3149*trans + 0.1054 - rot;
     else
-        keyscan_out_region = -10.66*square(trans_2) + 11.81*trans_2*trans - 4.371*trans_2 + 0.5319*trans + 0.2042 - rot;
+        keyscan_out_region = -10.66*pow(trans_2, 2) + 11.81*trans_2*trans - 4.371*trans_2 + 0.5319*trans + 0.2042 - rot;
 
     if (keyscan_out_region < 0.f) //(trans + rot > threshold)
     {

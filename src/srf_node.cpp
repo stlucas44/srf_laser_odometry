@@ -72,10 +72,10 @@ CLaserOdometry2D::CLaserOdometry2D()
         initial_robot_pose.pose.pose.position.x = 0;
         initial_robot_pose.pose.pose.position.y = 0;
         initial_robot_pose.pose.pose.position.z = 0;
-        initial_robot_pose.pose.pose.orientation.w = 0;
+        initial_robot_pose.pose.pose.orientation.w = 1;
         initial_robot_pose.pose.pose.orientation.x = 0;
         initial_robot_pose.pose.pose.orientation.y = 0;
-        initial_robot_pose.pose.pose.orientation.z = 1;
+        initial_robot_pose.pose.pose.orientation.z = 0;
     }
 
     //Init variables
@@ -153,7 +153,8 @@ void CLaserOdometry2D::Init()
     //Robot initial pose
     mrpt::poses::CPose3D robotInitialPose;
     geometry_msgs::Pose _src = initial_robot_pose.pose.pose;
-    mrpt_bridge::convert(_src,robotInitialPose);
+    // mrpt_msgs_bridge::convert(_src,robotInitialPose);
+    robotInitialPose = mrpt::poses::CPose3D(mrpt::ros1bridge::fromROS(_src));
 
     //Set the Laser initial pose = Robot_initial_pose + LaserPoseOnTheRobot
     srf_obj.laser_pose = CPose2D(robotInitialPose + LaserPoseOnTheRobot);
@@ -217,6 +218,9 @@ void CLaserOdometry2D::publishPoseFromSRF()
         double ang_speed = srf_obj.kai_loc(2) / time_inc_sec;
         robot_oldpose = robot_pose;
 
+        if (isnan(robot_pose.x()) || isnan(robot_pose.y()) || isnan(robot_pose.yaw()))
+            return;
+        
         //first, we'll publish the odometry over tf
         //---------------------------------------
         if (publish_tf)

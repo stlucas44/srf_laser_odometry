@@ -12,4 +12,4 @@ For a full description of the algorithm, please refer to:
 **Robust Planar Odometry based on Symmetric Range Flow and Multi-Scan Alignment**. *IEEE Transactions on Robotics, pp. 1623--1635, 2018* [SRF paper](http://mapir.isa.uma.es/work/SRF-Odometry)
 
 # Dependencies
-The code provided in this repo depends on the famous Mobile Robot Programming Toolkit [MRPT](https://www.mrpt.org/). To avoid problems with versions, we used the defatult binary version (1.3.2-1) available in the official Ubuntu repository (`sudo apt-get install libmrpt-dev mrpt-apps`), and the ROS-pkg **mrpt_bridge** to convert data types between MRPT and ROS.
+The code provided in this repo depends on the famous Mobile Robot Programming Toolkit [MRPT](https://www.mrpt.org/). To avoid problems with versions, we used the defatult binary version (1.3.2-1) available in the official Ubuntu repository (`sudo apt-get install libmrpt-dev mrpt-apps`), and the ROS-pkg **mrpt_msgs_bridge** to convert data types between MRPT and ROS.

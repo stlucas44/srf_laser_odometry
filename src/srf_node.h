@@ -31,7 +31,7 @@
 #include <tf/transform_listener.h>
 #include <nav_msgs/Odometry.h>
 #include <sensor_msgs/LaserScan.h>
-#include <mrpt_bridge/pose.h>
+#include <mrpt/ros1bridge/pose.h>
 
 // SRF
 #include "laser_odometry_refscans.h"
