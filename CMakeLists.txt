@@ -20,6 +20,7 @@ find_package(catkin REQUIRED COMPONENTS
   std_msgs
   tf
   mrpt_msgs_bridge
+  k800hal_msgs
 )
 
 ## System dependencies are found with CMake's conventions

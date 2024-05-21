@@ -59,6 +59,9 @@ CLaserOdometry2D::CLaserOdometry2D()
     odom_pub = pn.advertise<nav_msgs::Odometry>(odom_topic, 5);
     laser_pub = pn.advertise<sensor_msgs::LaserScan>("srf_laser_truncated", 5);
 
+	// Services
+	initPoseSrv = n.advertiseService("srf/reset_pose", &CLaserOdometry2D::initPoseSrvCallBack, this);
+
     //init pose
     //----------
     if (init_pose_from_topic != "")
@@ -129,7 +132,7 @@ void CLaserOdometry2D::Init()
     tf::StampedTransform transform;
     try
     {
-        tf_listener.lookupTransform(base_frame_id, last_scan.header.frame_id, ros::Time(0), transform);
+        tf_listener.lookupTransform(base_frame_id, "laser_frame", ros::Time(0), transform);
     }
     catch (tf::TransformException &ex)
     {
@@ -178,7 +181,7 @@ void CLaserOdometry2D::publishPoseFromSRF()
     tf::StampedTransform transform;
     try
     {
-        tf_listener.lookupTransform(last_scan.header.frame_id, base_frame_id, ros::Time(0), transform);
+        tf_listener.lookupTransform("laser_frame", base_frame_id, ros::Time(0), transform);
     }
     catch (tf::TransformException &ex)
     {
@@ -357,6 +360,33 @@ void CLaserOdometry2D::initPoseCallBack(const nav_msgs::Odometry::ConstPtr& new_
         initial_robot_pose = *new_initPose;
         GT_pose_initialized = true;
     }
+}
+
+bool CLaserOdometry2D::initPoseSrvCallBack(k800hal_msgs::HalSrv::Request &req,
+                                   k800hal_msgs::HalSrv::Response &res)
+{
+    if (req.type == req.RESET_POSE) {
+		// transcribe pose
+		initial_robot_pose.pose.pose.position.x = req.pose.x;
+		initial_robot_pose.pose.pose.position.y = req.pose.y;
+		initial_robot_pose.pose.pose.position.z = 0;
+		tf2::Quaternion q;
+		q.setEuler(0.0, 0.0, req.pose.theta);
+		initial_robot_pose.pose.pose.orientation = tf2::toMsg(q);
+
+		GT_pose_initialized = true;
+
+		// recall init
+		Init();
+		return true;
+	}
+	else
+	{
+		ROS_INFO("[SRF] unsupported srv option");
+		return false;
+	}
+    Init();
+	ROS_INFO("[SRF] Reinizialization complete!");
 }
 
 
