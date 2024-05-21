@@ -107,7 +107,7 @@ bool CLaserOdometry2D::scan_available()
 
 
 void CLaserOdometry2D::Init()
-{    
+{
     ROS_INFO("[SRF] Got first Laser Scan .... Configuring node");
     const unsigned int scan_size = last_scan.ranges.size();             // Num of samples (size) of the scan laser    
     const float fov = fabs(last_scan.angle_max - last_scan.angle_min);  // Horizontal Laser's FOV
@@ -378,15 +378,15 @@ bool CLaserOdometry2D::initPoseSrvCallBack(k800hal_msgs::HalSrv::Request &req,
 
 		// recall init
 		Init();
-		return true;
+		// confirm
+		res.ok = true;
+	    ROS_INFO("[SRF] Reinizialization complete!");
+	    return true;
 	}
-	else
-	{
-		ROS_INFO("[SRF] unsupported srv option");
-		return false;
-	}
-    Init();
-	ROS_INFO("[SRF] Reinizialization complete!");
+	else {
+	    ROS_INFO("[SRF] unsupported srv option");
+	    return true;
+    }
 }
 
 
