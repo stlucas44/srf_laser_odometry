@@ -27,6 +27,8 @@ For a full description of the algorithm, please refer to:
 
 # Setup:
 
+Installation
+
 ```
 # apt libs
 apt update
@@ -40,6 +42,17 @@ git clone git@github.com:tuw-robotics/marker_msgs.git
 # build:
 catkin build srf_laser_odometry 
 ```
+
+Tested version compatibility (latest run with):
+
+* `git@github.com:stlucas44/srf_laser_odometry.git`
+    * commit: `96859cef078efc839dfe66df9cd8627edb9b93ab`
+* `git@github.com:mrpt-ros-pkg/mrpt_msgs.git`
+    * commit: `55ba56363d0f8da84a588b149b3459704f08b0e1`
+* `git@github.com:mrpt-ros-pkg/mrpt_navigation.git`
+    * commit:`72cf6fa30f7c5ed415746b7c1fe6a97f56674858`
+* `git@github.com:tuw-robotics/marker_msgs.git`
+    * commit: `c7ead955cf1c37d9f17ab53eaf101b769f772636`
 
 # Dependencies
 
